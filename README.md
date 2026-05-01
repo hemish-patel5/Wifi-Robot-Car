@@ -1,14 +1,14 @@
-# 🤖 RoverLink
+# 🤖 Wifi Robot Car
 
 A Wi-Fi controlled robot car built with an ESP32 and a React web app. Control the robot from any browser on your local network — no Bluetooth, no app install required.
 
-> Built by **Pat** (Software) & **Harmu** (Electrical Engineering)
+> Built by **Hemish** (Software Engineer) & **Harmish** (Electrical Engineer)
 
 ---
 
 ## Demo
 
-> _Add a GIF or photo of the robot here_
+> _Adding a picture here
 
 ---
 
@@ -154,8 +154,8 @@ Open the app in your browser. Make sure your device is on the **same Wi-Fi netwo
 
 | Name | Role | Responsibilities |
 |------|------|-----------------|
-| Pat | Software Developer | ESP32 firmware, WebSocket server, React web app |
-| Harmu | Electrical Engineer | Motor wiring, power setup, motor driver connections, hardware debugging |
+| Hemish | Software Developer | ESP32 firmware, WebSocket server, React web app |
+| Harmish | Electrical Engineer | Motor wiring, power setup, motor driver connections, hardware debugging |
 
 ---
 
@@ -170,6 +170,3 @@ Open the app in your browser. Make sure your device is on the **same Wi-Fi netwo
 
 ---
 
-## License
-
-MIT License — feel free to use and build on this project.
