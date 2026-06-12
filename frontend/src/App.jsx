@@ -62,20 +62,35 @@ function GearIcon() {
 }
 
 function DirectionButton({ label, direction }) {
+  function handlePointerDown(event) {
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    startCommand(direction)
+  }
+
+  function handlePointerRelease(event) {
+    event.preventDefault()
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+
+    stopCommand()
+  }
+
   return (
     // One direction control: an inactive button plus its label.
     <div
       className={`absolute grid w-[clamp(94px,28vw,122px)] justify-items-center gap-2 ${directionPositions[direction]}`}
     >
       <button
-        className="grid aspect-square w-[clamp(76px,22vw,98px)] cursor-default place-items-center rounded-2xl border-[3px] border-[#070707] bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.18),transparent_36%),linear-gradient(145deg,#555,#1b1b1b)]"
+        className="grid aspect-square w-[clamp(76px,22vw,98px)] touch-none select-none place-items-center rounded-2xl border-[3px] border-[#070707] bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.18),transparent_36%),linear-gradient(145deg,#555,#1b1b1b)]"
         type="button"
         aria-label={label}
-        onMouseDown={() => startCommand(direction)}
-        onMouseUp={() => stopCommand('s')}
-        onTouchStart={() => startCommand(direction)}
-        onTouchEnd={() => stopCommand('s')}
-        onTouchCancel={() => stopCommand('s')}
+        onContextMenu={(event) => event.preventDefault()}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerRelease}
+        onPointerCancel={handlePointerRelease}
       >
         <ArrowIcon direction={direction} />
       </button>
