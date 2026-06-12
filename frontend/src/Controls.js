@@ -4,9 +4,9 @@ const STORAGE_KEY = 'robotCarHost'
 const COMMAND_REPEAT_MS = 120
 
 let activeCommand = null
+let activeRequest = null
 let repeatTimer = null
 const statusListeners = new Set()
-const commandPings = new Set()
 
 function notifyStatus(status) {
     const nextStatus = {
@@ -34,10 +34,6 @@ function normalizeHost(host) {
     return host.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim()
 }
 
-function isHttpsPageToHttpRobot() {
-    return window.location.protocol === 'https:'
-}
-
 export function getRobotHost() {
     const params = new URLSearchParams(window.location.search)
     const queryHost = params.get('robot') || params.get('host')
@@ -60,33 +56,32 @@ export function getRobotHost() {
     return DEFAULT_ROBOT_HOST
 }
 
-const send = (command) => {
+const send = async (command, options = {}) => {
     const robotHost = getRobotHost()
 
-    if (isHttpsPageToHttpRobot()) {
+    try {
+        await fetch(`http://${robotHost}/${command}?t=${Date.now()}`, {
+            cache: 'no-store',
+            mode: 'no-cors',
+            signal: options.signal,
+        });
+        notifyStatus({
+            command,
+            state: 'sent',
+            message: `Sent ${command}`,
+        })
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return
+        }
+
         notifyStatus({
             command,
             state: 'error',
-            message: 'Open app with HTTP',
+            message: `Could not send ${command}`,
         })
-        return false
+        console.error(`Could not send "${command}" to ${robotHost}`, error)
     }
-
-    const ping = new Image()
-    const releasePing = () => commandPings.delete(ping)
-
-    commandPings.add(ping)
-    ping.onload = releasePing
-    ping.onerror = releasePing
-
-    ping.src = `http://${robotHost}/${command}?t=${Date.now()}`
-    notifyStatus({
-        command,
-        state: 'sent',
-        message: `Sent ${command}`,
-    })
-
-    return true
 };
 
 function clearRepeat() {
@@ -95,17 +90,24 @@ function clearRepeat() {
         repeatTimer = null
     }
 
+    if (activeRequest !== null) {
+        activeRequest.abort()
+        activeRequest = null
+    }
 }
 
-function repeatCommand(command) {
+async function repeatCommand(command) {
     if (activeCommand !== command) {
         return
     }
 
-    if (!send(command)) {
-        activeCommand = null
-        clearRepeat()
-        return
+    const controller = new AbortController()
+    activeRequest = controller
+
+    await send(command, { signal: controller.signal })
+
+    if (activeRequest === controller) {
+        activeRequest = null
     }
 
     if (activeCommand === command) {
@@ -115,15 +117,6 @@ function repeatCommand(command) {
 
 export function startCommand(command) {
     if (activeCommand === command) {
-        return
-    }
-
-    if (isHttpsPageToHttpRobot()) {
-        notifyStatus({
-            command,
-            state: 'error',
-            message: 'Open app with HTTP',
-        })
         return
     }
 
