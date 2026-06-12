@@ -4,9 +4,9 @@ const STORAGE_KEY = 'robotCarHost'
 const COMMAND_REPEAT_MS = 120
 
 let activeCommand = null
-let activeRequest = null
 let repeatTimer = null
 const statusListeners = new Set()
+const commandPings = new Set()
 
 function notifyStatus(status) {
     const nextStatus = {
@@ -56,32 +56,21 @@ export function getRobotHost() {
     return DEFAULT_ROBOT_HOST
 }
 
-const send = async (command, options = {}) => {
+const send = (command) => {
     const robotHost = getRobotHost()
+    const ping = new Image()
+    const releasePing = () => commandPings.delete(ping)
 
-    try {
-        await fetch(`http://${robotHost}/${command}?t=${Date.now()}`, {
-            cache: 'no-store',
-            mode: 'no-cors',
-            signal: options.signal,
-        });
-        notifyStatus({
-            command,
-            state: 'sent',
-            message: `Sent ${command}`,
-        })
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            return
-        }
+    commandPings.add(ping)
+    ping.onload = releasePing
+    ping.onerror = releasePing
 
-        notifyStatus({
-            command,
-            state: 'error',
-            message: `Could not send ${command}`,
-        })
-        console.error(`Could not send "${command}" to ${robotHost}`, error)
-    }
+    ping.src = `http://${robotHost}/${command}?t=${Date.now()}`
+    notifyStatus({
+        command,
+        state: 'sent',
+        message: `Sent ${command}`,
+    })
 };
 
 function clearRepeat() {
@@ -90,25 +79,14 @@ function clearRepeat() {
         repeatTimer = null
     }
 
-    if (activeRequest !== null) {
-        activeRequest.abort()
-        activeRequest = null
-    }
 }
 
-async function repeatCommand(command) {
+function repeatCommand(command) {
     if (activeCommand !== command) {
         return
     }
 
-    const controller = new AbortController()
-    activeRequest = controller
-
-    await send(command, { signal: controller.signal })
-
-    if (activeRequest === controller) {
-        activeRequest = null
-    }
+    send(command)
 
     if (activeCommand === command) {
         repeatTimer = setTimeout(() => repeatCommand(command), COMMAND_REPEAT_MS)
