@@ -62,16 +62,33 @@ function GearIcon() {
 }
 
 function DirectionButton({ label, direction }) {
+  function startMoving(event) {
+    event.preventDefault()
+    startCommand(direction)
+  }
+
+  function stopMoving(event) {
+    event.preventDefault()
+    stopCommand()
+  }
+
   function handlePointerDown(event) {
     event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
+
+    if (event.currentTarget.setPointerCapture) {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+
     startCommand(direction)
   }
 
   function handlePointerRelease(event) {
     event.preventDefault()
 
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+    if (
+      event.currentTarget.hasPointerCapture &&
+      event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
 
@@ -91,6 +108,12 @@ function DirectionButton({ label, direction }) {
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerRelease}
         onPointerCancel={handlePointerRelease}
+        onTouchStart={startMoving}
+        onTouchEnd={stopMoving}
+        onTouchCancel={stopMoving}
+        onMouseDown={startMoving}
+        onMouseUp={stopMoving}
+        onMouseLeave={stopMoving}
       >
         <ArrowIcon direction={direction} />
       </button>
