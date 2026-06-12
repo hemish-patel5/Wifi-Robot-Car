@@ -3,6 +3,7 @@
 #include <WebServer.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
+#include <SPIFFS.h>
 #include "SetupPage.h"
 
 // ===== PIN DEFINITIONS =====
@@ -112,6 +113,66 @@ void sendText(int statusCode, const String &message)
     server.send(statusCode, "text/plain", message);
 }
 
+String getContentType(const String &path)
+{
+    if (path.endsWith(".html"))
+    {
+        return "text/html";
+    }
+
+    if (path.endsWith(".css"))
+    {
+        return "text/css";
+    }
+
+    if (path.endsWith(".js"))
+    {
+        return "application/javascript";
+    }
+
+    if (path.endsWith(".svg"))
+    {
+        return "image/svg+xml";
+    }
+
+    if (path.endsWith(".json"))
+    {
+        return "application/json";
+    }
+
+    if (path.endsWith(".ico"))
+    {
+        return "image/x-icon";
+    }
+
+    return "text/plain";
+}
+
+bool serveStaticFile(String path)
+{
+    if (path.endsWith("/"))
+    {
+        path += "index.html";
+    }
+
+    if (!SPIFFS.exists(path))
+    {
+        return false;
+    }
+
+    File file = SPIFFS.open(path, "r");
+
+    if (!file)
+    {
+        return false;
+    }
+
+    addCorsHeaders();
+    server.streamFile(file, getContentType(path));
+    file.close();
+    return true;
+}
+
 String htmlEscape(const String &value)
 {
     String escaped = value;
@@ -135,17 +196,21 @@ String jsonEscape(const String &value)
 
 void handleRoot()
 {
-    addCorsHeaders();
-
     if (setupMode)
     {
+        addCorsHeaders();
         server.send(200, "text/html", buildSetupPage(WiFi.softAPIP().toString()));
+        return;
+    }
+
+    if (serveStaticFile("/index.html"))
+    {
         return;
     }
 
     String status = "RobotCar connected to " + htmlEscape(WiFi.SSID()) + "\n";
     status += "IP: " + WiFi.localIP().toString() + "\n";
-    server.send(200, "text/plain", status);
+    sendText(200, status);
 }
 
 void handleWifiSave()
@@ -283,6 +348,13 @@ void startSetupAccessPoint()
 void setupRoutes()
 {
     server.on("/", HTTP_GET, handleRoot);
+    server.on("/status", HTTP_GET, []()
+              {
+                  String status = "RobotCar connected to " + htmlEscape(WiFi.SSID()) + "\n";
+                  status += "IP: " + WiFi.localIP().toString() + "\n";
+                  status += "Host: http://" + String(mdnsName) + ".local\n";
+                  sendText(200, status);
+              });
     server.on("/wifi", HTTP_POST, handleWifiSave);
     server.on("/wifi/reset", HTTP_POST, handleWifiReset);
     server.on("/scan", HTTP_GET, handleWifiScan);
@@ -291,6 +363,11 @@ void setupRoutes()
                           if (server.method() == HTTP_OPTIONS)
                           {
                               sendText(204, "");
+                              return;
+                          }
+
+                          if (!setupMode && serveStaticFile(server.uri()))
+                          {
                               return;
                           }
 
@@ -331,6 +408,15 @@ void setup()
     pinMode(BIN2, OUTPUT);
     stopMotors();
 
+    if (SPIFFS.begin(true))
+    {
+        Serial.println("SPIFFS mounted. Frontend files are available.");
+    }
+    else
+    {
+        Serial.println("SPIFFS mount failed. Frontend files will not be served.");
+    }
+
     if (connectToSavedWifi())
     {
         startMdns();
@@ -342,6 +428,7 @@ void setup()
 
     setupRoutes();
     server.begin();
+    Serial.println("HTTP server started on port 80.");
 }
 
 void loop()

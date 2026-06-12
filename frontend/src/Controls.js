@@ -34,23 +34,37 @@ function normalizeHost(host) {
     return host.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim()
 }
 
+function isLocalDevelopmentHost(hostname) {
+    return hostname === 'localhost' || hostname === '127.0.0.1'
+}
+
+function isHostedByRobot(hostname) {
+    return hostname === DEFAULT_ROBOT_HOST || hostname === SETUP_AP_HOST || /^192\.168\./.test(hostname)
+}
+
 export function getRobotHost() {
     const params = new URLSearchParams(window.location.search)
     const queryHost = params.get('robot') || params.get('host')
-    const configuredHost = queryHost || import.meta.env.VITE_ROBOT_HOST || localStorage.getItem(STORAGE_KEY)
+    const envHost = import.meta.env.VITE_ROBOT_HOST
 
-    if (configuredHost) {
-        const host = normalizeHost(configuredHost)
-
-        if (queryHost) {
-            localStorage.setItem(STORAGE_KEY, host)
-        }
-
+    if (queryHost) {
+        const host = normalizeHost(queryHost)
+        localStorage.setItem(STORAGE_KEY, host)
         return host
     }
 
-    if (window.location.hostname === SETUP_AP_HOST) {
-        return SETUP_AP_HOST
+    if (envHost) {
+        return normalizeHost(envHost)
+    }
+
+    if (!isLocalDevelopmentHost(window.location.hostname) && isHostedByRobot(window.location.hostname)) {
+        return window.location.hostname
+    }
+
+    const storedHost = localStorage.getItem(STORAGE_KEY)
+
+    if (storedHost) {
+        return normalizeHost(storedHost)
     }
 
     return DEFAULT_ROBOT_HOST
