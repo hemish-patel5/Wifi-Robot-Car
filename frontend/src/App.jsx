@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import './index.css'
 import { startCommand } from './Controls.js'
 import { stopCommand } from './Controls.js'
+import { subscribeCommandStatus } from './Controls.js'
 
 
 // Shared Tailwind classes for the raised cream panels used throughout the UI.
@@ -11,7 +13,7 @@ const panelChrome =
 const pixelText =
   'font-black tracking-normal text-[#333] [text-shadow:1px_0_0_#333,0_2px_0_rgba(255,255,255,0.95),2px_3px_0_rgba(0,0,0,0.16)]'
 
-// These are the four static control buttons. They are intentionally display-only for now.
+// These are the four robot movement controls.
 const directions = [
   { label: 'Forward', direction: 'f' },
   { label: 'Left', direction: 'l' },
@@ -96,7 +98,7 @@ function DirectionButton({ label, direction }) {
   }
 
   return (
-    // One direction control: an inactive button plus its label.
+    // One direction control: hold to keep sending movement commands.
     <div
       className={`absolute grid w-[clamp(94px,28vw,122px)] justify-items-center gap-2 ${directionPositions[direction]}`}
     >
@@ -155,6 +157,15 @@ function PixelCar() {
 }
 
 function App() {
+  const [commandStatus, setCommandStatus] = useState({
+    host: '...',
+    state: 'ready',
+    message: 'Ready',
+    updatedAt: '',
+  })
+
+  useEffect(() => subscribeCommandStatus(setCommandStatus), [])
+
   return (
     // The app now fills the mobile viewport directly, with no fake phone frame.
     <main
@@ -163,9 +174,19 @@ function App() {
     >
       {/* Connection and settings row. Buttons are visual only for now. */}
       <div className="flex items-center justify-between gap-3.5">
-        <div className={`${panelChrome} inline-flex min-h-[34px] items-center gap-2.5 rounded-lg px-3.5 py-1.5 text-[clamp(0.7rem,2.75vw,0.9rem)] font-black text-[#2d7c17] [text-shadow:1px_1px_0_rgba(255,255,255,0.85)] max-[365px]:px-2.5`}>
-          <span className="size-2.5 flex-none rounded-full bg-[#2d8f1b]" />
-          <span>Connected</span>
+        <div
+          className={`${panelChrome} inline-flex min-h-[46px] min-w-0 items-center gap-2.5 rounded-lg px-3.5 py-1.5 text-[clamp(0.58rem,2.35vw,0.76rem)] font-black text-[#2d7c17] [text-shadow:1px_1px_0_rgba(255,255,255,0.85)] max-[365px]:px-2.5`}
+          aria-live="polite"
+        >
+          <span
+            className={`size-2.5 flex-none rounded-full ${
+              commandStatus.state === 'error' ? 'bg-[#c92c24]' : 'bg-[#2d8f1b]'
+            }`}
+          />
+          <span className="min-w-0 leading-[1.35]">
+            <span className="block truncate">{commandStatus.message}</span>
+            <span className="block truncate text-[#555]">{commandStatus.host}</span>
+          </span>
         </div>
 
         <button
@@ -193,7 +214,7 @@ function App() {
         </div>
       </div>
 
-      {/* Direction pad. The pale cross shape is decorative; each button remains static. */}
+      {/* Direction pad. The pale cross shape is decorative; each button controls the robot. */}
       <section className={`${panelChrome} relative h-[min(45dvh,390px)] min-h-[352px] overflow-hidden rounded-[30px]`} aria-label="Movement controls">
         <div className="absolute inset-9 rounded-[22px] bg-[linear-gradient(#ebe7df,#ebe7df),linear-gradient(#ebe7df,#ebe7df)] bg-[length:28%_100%,100%_28%] bg-center bg-no-repeat" aria-hidden="true" />
         {directions.map((item) => (
