@@ -28,7 +28,6 @@ A Wi-Fi controlled robot car built with an ESP32 and a React web app. Control th
 Wifi-Robot-Car/
 |- backend/
 |  |- include/
-|  |  |- secrets.example.h
 |  |  `- secrets.h          # local only, gitignored
 |  |- src/
 |  |  `- main.cpp
@@ -43,13 +42,13 @@ Wifi-Robot-Car/
 
 ## Hardware
 
-| Component       | Details                                       |
-| --------------- | --------------------------------------------- |
-| Microcontroller | ESP32 DevKitC                                 |
-| Motor Driver    | TB6612FNG Dual Motor Driver                   |
-| Motors          | 4x DC Electric Motor                          |
-| Power           | 2x 18650 Li-ion or 2S LiPo + Step-Down Module |
-| Chassis         | Custom 3D printed casing                      |
+| Component       | Details                     |
+| --------------- | --------------------------- |
+| Microcontroller | ESP32 DevKitC               |
+| Motor Driver    | TB6612FNG Dual Motor Driver |
+| Motors          | 4x DC Electric Motor        |
+| Power           | 4 x AA Batteries            |
+| Chassis         | Custom 3D printed casing    |
 
 ## Hardware Wiring
 
