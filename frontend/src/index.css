@@ -1,1 +1,25 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 @import "tailwindcss";
+
+@theme {
+  --font-pixel: "Press Start 2P", "Courier New", Consolas, monospace;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    font-family: var(--font-pixel);
+    font-synthesis: none;
+    text-rendering: geometricPrecision;
+  }
+
+  button {
+    font: inherit;
+  }
+}
