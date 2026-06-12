@@ -8,7 +8,7 @@ A Wi-Fi controlled robot car built with an ESP32 and a React web app. Control th
 
 ## Demo
 
-> _Adding a picture here
+> \_Adding a picture here
 
 ---
 
@@ -22,139 +22,68 @@ A Wi-Fi controlled robot car built with an ESP32 and a React web app. Control th
 
 ---
 
-## System Architecture
+## Project Structure
 
+```text
+Wifi-Robot-Car/
+|- backend/
+|  |- include/
+|  |  |- secrets.example.h
+|  |  `- secrets.h          # local only, gitignored
+|  |- src/
+|  |  `- main.cpp
+|  `- platformio.ini
+`- frontend/
+   |- src/
+   |  |- App.jsx
+   |  |- index.css
+   |  `- main.jsx
+   `- package.json
 ```
-Browser (React Web App)
-        │
-        │  WebSocket  ws://robot-ip:81
-        │
-ESP32 WebSocket Server
-        │
-TB6612FNG Motor Driver
-        │
-DC Motors (x4)
-```
-
----
 
 ## Hardware
 
-| Component | Details |
-|-----------|---------|
-| Microcontroller | ESP32 DevKitC |
-| Motor Driver | TB6612FNG Dual Motor Driver |
-| Motors | 4x DC Electric Motor |
-| Power | 2x 18650 Li-ion or 2S LiPo + Step-Down Module |
-| Chassis | Custom 3D printed casing |
+| Component       | Details                                       |
+| --------------- | --------------------------------------------- |
+| Microcontroller | ESP32 DevKitC                                 |
+| Motor Driver    | TB6612FNG Dual Motor Driver                   |
+| Motors          | 4x DC Electric Motor                          |
+| Power           | 2x 18650 Li-ion or 2S LiPo + Step-Down Module |
+| Chassis         | Custom 3D printed casing                      |
 
-### Wiring
+## Hardware Wiring
 
-| TB6612FNG Pin | ESP32 GPIO |
-|---------------|-----------|
-| PWMA | 14 |
-| AIN1 | 27 |
-| AIN2 | 26 |
-| PWMB | 12 |
-| BIN1 | 25 |
-| BIN2 | 33 |
-| STBY | 32 |
-| VCC | 3.3V |
-| GND | GND |
-| VM | Battery + |
+These pin mappings match the real firmware in `backend/src/main.cpp`.
 
-> ⚠️ Motors require separate power from the ESP32. Always connect GND together.
+| Signal | ESP32 GPIO |
+| ------ | ---------- |
+| PWMA   | 12         |
+| AIN2   | 14         |
+| AIN1   | 27         |
+| BIN1   | 26         |
+| BIN2   | 25         |
+| PWMB   | 33         |
 
----
-
-## Project Structure
-
-```
-RoverLink/
-├── firmware/          # ESP32 C++ code (PlatformIO)
-│   ├── src/
-│   │   └── main.cpp
-│   └── platformio.ini
-└── web-app/           # React frontend
-    ├── src/
-    │   └── App.jsx
-    └── package.json
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- [VS Code](https://code.visualstudio.com/) + [PlatformIO](https://platformio.org/) extension
-- [Node.js](https://nodejs.org/) (v18+)
-- ESP32 connected via USB
-
----
-
-### 1. Flash the ESP32
-
-```bash
-cd firmware
-```
-
-Open `src/main.cpp` and update your Wi-Fi credentials:
-
-```cpp
-const char* SSID     = "YOUR_WIFI_NAME";
-const char* PASSWORD = "YOUR_WIFI_PASSWORD";
-```
-
-Then upload via PlatformIO:
-
-```
-PlatformIO → Upload
-```
-
-Open the **Serial Monitor** and note the IP address printed, e.g.:
-```
-Connected! IP: 192.168.1.105
-```
-
----
-
-### 2. Run the Web App
-
-```bash
-cd web-app
-npm install
-npm run dev
-```
-
-Open `src/App.jsx` and set the ESP32's IP:
-
-```jsx
-const ESP32_IP = "192.168.1.105"; // 👈 Replace with your IP
-```
-
-Open the app in your browser. Make sure your device is on the **same Wi-Fi network** as the ESP32.
-
----
+Make sure the motor driver and ESP32 share a common ground. Power the motors separately from the ESP32 logic supply.
 
 ## Controls
 
-| Button | Action |
-|--------|--------|
-| ▲ | Forward |
-| ▼ | Backward |
-| ◄ | Turn Left |
-| ► | Turn Right |
-| ■ | Stop |
+| Button       | Action                      |
+| ------------ | --------------------------- |
+| ▲            | Forward                     |
+| ▼            | Backward                    |
+| ◄            | Turn Left                   |
+| ►            | Turn Right                  |
+| ■            | Stop                        |
 | Speed Slider | Adjust motor speed (80–255) |
 
 ---
 
 ## Roles
 
-| Name | Role | Responsibilities |
-|------|------|-----------------|
-| Hemish | Software Developer | ESP32 firmware, WebSocket server, React web app |
+| Name    | Role                | Responsibilities                                                        |
+| ------- | ------------------- | ----------------------------------------------------------------------- |
+| Hemish  | Software Developer  | ESP32 firmware, WebSocket server, React web app                         |
 | Harmish | Electrical Engineer | Motor wiring, power setup, motor driver connections, hardware debugging |
 
 ---
@@ -169,4 +98,3 @@ Open the app in your browser. Make sure your device is on the **same Wi-Fi netwo
 - [ ] Phase 6 — Autonomous navigation
 
 ---
-
