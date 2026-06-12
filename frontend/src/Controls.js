@@ -34,6 +34,10 @@ function normalizeHost(host) {
     return host.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim()
 }
 
+function isHttpsPageToHttpRobot() {
+    return window.location.protocol === 'https:'
+}
+
 export function getRobotHost() {
     const params = new URLSearchParams(window.location.search)
     const queryHost = params.get('robot') || params.get('host')
@@ -58,6 +62,16 @@ export function getRobotHost() {
 
 const send = (command) => {
     const robotHost = getRobotHost()
+
+    if (isHttpsPageToHttpRobot()) {
+        notifyStatus({
+            command,
+            state: 'error',
+            message: 'Open app with HTTP',
+        })
+        return false
+    }
+
     const ping = new Image()
     const releasePing = () => commandPings.delete(ping)
 
@@ -71,6 +85,8 @@ const send = (command) => {
         state: 'sent',
         message: `Sent ${command}`,
     })
+
+    return true
 };
 
 function clearRepeat() {
@@ -86,7 +102,11 @@ function repeatCommand(command) {
         return
     }
 
-    send(command)
+    if (!send(command)) {
+        activeCommand = null
+        clearRepeat()
+        return
+    }
 
     if (activeCommand === command) {
         repeatTimer = setTimeout(() => repeatCommand(command), COMMAND_REPEAT_MS)
@@ -95,6 +115,15 @@ function repeatCommand(command) {
 
 export function startCommand(command) {
     if (activeCommand === command) {
+        return
+    }
+
+    if (isHttpsPageToHttpRobot()) {
+        notifyStatus({
+            command,
+            state: 'error',
+            message: 'Open app with HTTP',
+        })
         return
     }
 
