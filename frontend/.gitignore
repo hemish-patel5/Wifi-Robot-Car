@@ -10,13 +10,45 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vite
+.cache
+.parcel-cache
+.turbo
+coverage
+.nyc_output
+playwright-report
+test-results
+cypress/videos
+cypress/screenshots
+storybook-static
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
 *.local
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Package manager caches and temporary files
+.npm
+.pnpm-store
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
