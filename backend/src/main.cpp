@@ -1,10 +1,9 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <Preferences.h>
-#include <ESPmDNS.h>
+#include <DNSServer.h>
 #include <SPIFFS.h>
-#include "SetupPage.h"
+#include "UltrasonicSensor.h"
 
 // ===== PIN DEFINITIONS =====
 const int PWMA = 12;
@@ -13,21 +12,23 @@ const int AIN1 = 27;
 const int BIN1 = 26;
 const int BIN2 = 25;
 const int PWMB = 33;
+const int ECHO_PIN = 22;
+const int TRIG_PIN = 23;
 const int freq = 5000;
 const int resolution = 8;
 
 WebServer server(80);
-Preferences preferences;
+DNSServer dnsServer;
 
-const char *setupApSsid = "RobotCar-Setup";
-const char *setupApPassword = "password";
-const char *mdnsName = "robotcar";
-const unsigned long wifiConnectTimeoutMs = 15000;
+const char *controlApSsid = "RobotCar";
+const char *controlApPassword = "password";
+const char *controlHostName = "robot.car";
+const byte dnsPort = 53;
 const unsigned long motorCommandTimeoutMs = 350;
 
-bool setupMode = false;
 bool motorsActive = false;
 unsigned long lastMotorCommandAt = 0;
+UltrasonicSensor ultrasonicSensor(TRIG_PIN, ECHO_PIN);
 
 // ===== MOVEMENT FUNCTIONS =====
 void markMotorCommand()
@@ -184,165 +185,36 @@ String htmlEscape(const String &value)
     return escaped;
 }
 
-String jsonEscape(const String &value)
-{
-    String escaped = value;
-    escaped.replace("\\", "\\\\");
-    escaped.replace("\"", "\\\"");
-    escaped.replace("\n", "\\n");
-    escaped.replace("\r", "\\r");
-    return escaped;
-}
-
 void handleRoot()
 {
-    if (setupMode)
-    {
-        addCorsHeaders();
-        server.send(200, "text/html", buildSetupPage(WiFi.softAPIP().toString()));
-        return;
-    }
-
     if (serveStaticFile("/index.html"))
     {
         return;
     }
 
-    String status = "RobotCar connected to " + htmlEscape(WiFi.SSID()) + "\n";
-    status += "IP: " + WiFi.localIP().toString() + "\n";
+    String status = "RobotCar access point: " + htmlEscape(String(controlApSsid)) + "\n";
+    status += "IP: " + WiFi.softAPIP().toString() + "\n";
+    status += "Control app: http://" + String(controlHostName) + "\n";
     sendText(200, status);
 }
 
-void handleWifiSave()
+void startControlAccessPoint()
 {
-    if (!server.hasArg("ssid"))
-    {
-        sendText(400, "Missing ssid");
-        return;
-    }
+    WiFi.mode(WIFI_AP);
+    WiFi.softAPsetHostname(controlHostName);
+    bool started = WiFi.softAP(controlApSsid, controlApPassword);
+    dnsServer.start(dnsPort, controlHostName, WiFi.softAPIP());
 
-    String ssid = server.arg("ssid");
-    String password = server.arg("password");
-    ssid.trim();
-
-    if (ssid.length() == 0)
-    {
-        sendText(400, "SSID cannot be empty");
-        return;
-    }
-
-    preferences.begin("wifi", false);
-    preferences.putString("ssid", ssid);
-    preferences.putString("password", password);
-    preferences.end();
-
-    addCorsHeaders();
-    server.send(200, "text/html", "<!doctype html><html><body><h1>Saved</h1><p>Robot is restarting and will try to join your WiFi.</p></body></html>");
-    delay(1000);
-    ESP.restart();
-}
-
-void handleWifiReset()
-{
-    preferences.begin("wifi", false);
-    preferences.clear();
-    preferences.end();
-
-    sendText(200, "WiFi credentials cleared. Restarting.");
-    delay(1000);
-    ESP.restart();
-}
-
-void handleWifiScan()
-{
-    addCorsHeaders();
-    int networkCount = WiFi.scanNetworks();
-    String json = "[";
-
-    for (int i = 0; i < networkCount; i++)
-    {
-        if (i > 0)
-        {
-            json += ",";
-        }
-
-        json += "{\"ssid\":\"" + jsonEscape(WiFi.SSID(i)) + "\",\"rssi\":" + String(WiFi.RSSI(i)) + "}";
-    }
-
-    json += "]";
-    server.send(200, "application/json", json);
-}
-
-bool connectToSavedWifi()
-{
-    preferences.begin("wifi", true);
-    String ssid = preferences.getString("ssid", "");
-    String password = preferences.getString("password", "");
-    preferences.end();
-
-    if (ssid.length() == 0)
-    {
-        Serial.println("No saved WiFi credentials.");
-        return false;
-    }
-
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), password.c_str());
-
-    Serial.print("Connecting to WiFi: ");
-    Serial.println(ssid);
-
-    unsigned long startedAt = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - startedAt < wifiConnectTimeoutMs)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println();
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        Serial.print("Connected. IP address: ");
-        Serial.println(WiFi.localIP());
-        return true;
-    }
-
-    Serial.println("Could not connect to saved WiFi.");
-    WiFi.disconnect(true);
-    return false;
-}
-
-void startMdns()
-{
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        return;
-    }
-
-    if (MDNS.begin(mdnsName))
-    {
-        MDNS.addService("http", "tcp", 80);
-        Serial.print("mDNS started: http://");
-        Serial.print(mdnsName);
-        Serial.println(".local");
-    }
-    else
-    {
-        Serial.println("mDNS failed to start.");
-    }
-}
-
-void startSetupAccessPoint()
-{
-    setupMode = true;
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.softAP(setupApSsid, setupApPassword);
-
-    Serial.print("Setup AP started: ");
-    Serial.println(setupApSsid);
-    Serial.print("Setup AP IP address: ");
+    Serial.print("Control AP ");
+    Serial.println(started ? "started." : "failed to start.");
+    Serial.print("SSID: ");
+    Serial.println(controlApSsid);
+    Serial.print("Password: ");
+    Serial.println(controlApPassword);
+    Serial.print("IP control app: http://");
     Serial.println(WiFi.softAPIP());
+    Serial.print("Named control app: http://");
+    Serial.println(controlHostName);
 }
 
 void setupRoutes()
@@ -350,14 +222,10 @@ void setupRoutes()
     server.on("/", HTTP_GET, handleRoot);
     server.on("/status", HTTP_GET, []()
               {
-                  String status = "RobotCar connected to " + htmlEscape(WiFi.SSID()) + "\n";
-                  status += "IP: " + WiFi.localIP().toString() + "\n";
-                  status += "Host: http://" + String(mdnsName) + ".local\n";
-                  sendText(200, status);
-              });
-    server.on("/wifi", HTTP_POST, handleWifiSave);
-    server.on("/wifi/reset", HTTP_POST, handleWifiReset);
-    server.on("/scan", HTTP_GET, handleWifiScan);
+                  String status = "RobotCar access point: " + htmlEscape(String(controlApSsid)) + "\n";
+                  status += "IP: " + WiFi.softAPIP().toString() + "\n";
+                  status += "Control app: http://" + String(controlHostName) + "\n";
+                  sendText(200, status); });
     server.onNotFound([]()
                       {
                           if (server.method() == HTTP_OPTIONS)
@@ -366,7 +234,7 @@ void setupRoutes()
                               return;
                           }
 
-                          if (!setupMode && serveStaticFile(server.uri()))
+                          if (serveStaticFile(server.uri()))
                           {
                               return;
                           }
@@ -406,6 +274,7 @@ void setup()
     pinMode(AIN2, OUTPUT);
     pinMode(BIN1, OUTPUT);
     pinMode(BIN2, OUTPUT);
+    ultrasonicSensor.begin();
     stopMotors();
 
     if (SPIFFS.begin(true))
@@ -417,14 +286,7 @@ void setup()
         Serial.println("SPIFFS mount failed. Frontend files will not be served.");
     }
 
-    if (connectToSavedWifi())
-    {
-        startMdns();
-    }
-    else
-    {
-        startSetupAccessPoint();
-    }
+    startControlAccessPoint();
 
     setupRoutes();
     server.begin();
@@ -433,6 +295,8 @@ void setup()
 
 void loop()
 {
+    dnsServer.processNextRequest();
     server.handleClient();
     enforceMotorTimeout();
+    ultrasonicSensor.printProximityScore();
 }
