@@ -2,8 +2,6 @@
 
 A Wi-Fi controlled robot car built with an ESP32 and a React web app. Control the robot from any browser on your local network — no Bluetooth, no app install required.
 
-> Built by **Hemish** (Software Engineer) & **Harmish** (Electrical Engineer)
-
 ---
 
 ## Demo
